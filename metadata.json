@@ -1,0 +1,5 @@
+{
+  "name": "Team Break Tracker",
+  "description": "A real-time break time tracker for teams. Employees can request breaks, and admins can approve them, initiating a countdown timer. The app provides a clear overview of team member availability.",
+  "requestFramePermissions": []
+}
