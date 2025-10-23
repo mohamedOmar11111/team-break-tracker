@@ -1,20 +1,33 @@
-# Use an official Node.js runtime as a parent image
-FROM node:18
+# --- Build stage ---
+FROM node:18 AS builder
 
-# Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json to the working directory
+# Copy package files and install dependencies
 COPY package*.json ./
-
-# Install any needed packages
 RUN npm install
 
-# Bundle app source
+# Copy the rest of the application source code
 COPY . .
 
-# Make port 8080 available to the world outside this container
+# Build the frontend
+RUN npm run build
+
+# --- Production stage ---
+FROM node:18
+
+WORKDIR /usr/src/app
+
+# Copy package files and install only production dependencies
+COPY package*.json ./
+RUN npm install --omit=dev
+
+# Copy the server file
+COPY server.cjs .
+
+# Copy the built frontend from the builder stage
+COPY --from=builder /usr/src/app/dist ./dist
+
 EXPOSE 8080
 
-# Define the command to run your app
 CMD [ "node", "server.cjs" ]
