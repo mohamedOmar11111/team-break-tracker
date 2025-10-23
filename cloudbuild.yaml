@@ -5,3 +5,21 @@ steps:
   # Run tests
   - name: 'gcr.io/cloud-builders/npm'
     args: ['test']
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/team-break-tracker', '.']
+  # Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/team-break-tracker']
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google-appengine/exec-wrapper'
+    args:
+      - '-i'
+      - 'gcr.io/$PROJECT_ID/team-break-tracker'
+      - '-s'
+      - 'team-break-tracker'
+      - '-r'
+      - 'us-central1' # You can change this to your preferred region
+      - '--allow-unauthenticated'
+images:
+  - 'gcr.io/$PROJECT_ID/team-break-tracker'
