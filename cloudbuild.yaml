@@ -19,7 +19,7 @@ steps:
       - '-s'
       - 'team-break-tracker'
       - '-r'
-      - 'us-central1' # You can change this to your preferred region
+      - 'us-west1' # You can change this to your preferred region
       - '--allow-unauthenticated'
 images:
   - 'gcr.io/$PROJECT_ID/team-break-tracker'
