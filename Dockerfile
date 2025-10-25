@@ -19,7 +19,7 @@ FROM node:22
 WORKDIR /usr/src/app
 
 # Copy package files and install only production dependencies
-COPY package*.json ./n
+COPY package*.json ./
 RUN npm install --omit=dev
 
 # Copy the server file
