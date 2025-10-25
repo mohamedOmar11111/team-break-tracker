@@ -12,6 +12,11 @@ const port = process.env.PORT || 3001;
 // Serve static files from the 'dist' directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// Fallback to index.html for all other routes (for single-page applications)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 // I'm copying the user data here to avoid setting up a transpiler for the server.
 const UserRole = {
   Admin: 'admin',
@@ -62,6 +67,7 @@ const broadcast = (data) => {
 
 wss.on('connection', ws => {
   console.log('Client connected');
+
   // Send the initial state to the new client
   ws.send(JSON.stringify({ type: 'INIT', payload: { users, breakDuration } }));
 
@@ -82,14 +88,13 @@ wss.on('connection', ws => {
         break;
       case 'APPROVE_BREAK':
         users = users.map(u =>
-          u.id === payload.userId
-            ? {
-                ...u,
-                breakStatus: BreakStatus.OnBreak,
-                breaksTaken: u.breaksTaken + 1,
-                breakEndTime: Date.now() + breakDuration * 60 * 1000,
-              }
-            : u
+          u.id === payload.userId ?
+            {
+              ...u,
+              breakStatus: BreakStatus.OnBreak,
+              breaksTaken: u.breaksTaken + 1,
+              breakEndTime: Date.now() + breakDuration * 60 * 1000,
+            } : u
         );
         break;
       case 'DENY_BREAK':
@@ -102,7 +107,7 @@ wss.on('connection', ws => {
         break;
       case 'RESET_DATA':
         users = [
-            // Admins
+          // Admins
           { id: '1', name: 'ALi', username: 'ali', password: 'password', role: UserRole.Admin, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
           { id: '2', name: 'Atef', username: 'atef', password: 'password', role: UserRole.Admin, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
           { id: '3', name: 'Fadl', username: 'fadl', password: 'password', role: UserRole.Admin, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
@@ -140,4 +145,5 @@ wss.on('connection', ws => {
 
 server.listen(port, () => {
   console.log(`Server started on port ${port}`);
+  console.log(`Serving static files from: ${path.join(__dirname, 'dist')}`); // Added for debugging
 });
