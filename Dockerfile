@@ -4,7 +4,7 @@ FROM node:22 AS builder
 WORKDIR /usr/src/app
 
 # Copy package files and install dependencies
-COPY package*.json ./n
+COPY package*.json ./
 RUN npm install
 
 # Copy the rest of the application source code
@@ -19,7 +19,7 @@ FROM node:22
 WORKDIR /usr/src/app
 
 # Copy package files and install only production dependencies
-COPY package*.json ./n
+COPY package*.json ./
 RUN npm install --omit=dev
 
 # Copy the server file
@@ -30,5 +30,5 @@ COPY --from=builder /usr/src/app/dist ./dist
 
 EXPOSE 8080
 
-# Define the command to run your app
-CMD ["npm", "start"]
+# Define the command to run your app with verbose output for debugging
+CMD ["sh", "-c", "set -ex; npm install; npm start"]
