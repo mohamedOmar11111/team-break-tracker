@@ -23,3 +23,5 @@ steps:
       - '--allow-unauthenticated'
 images:
   - 'gcr.io/$PROJECT_ID/team-break-tracker'
+options:
+  logging: CLOUD_LOGGING_ONLY
