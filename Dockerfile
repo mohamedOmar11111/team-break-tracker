@@ -4,7 +4,7 @@ FROM node:22 AS builder
 WORKDIR /usr/src/app
 
 # Copy package files and install dependencies
-COPY package*.json ./
+COPY package*.json ./n
 RUN npm install
 
 # Copy the rest of the application source code
@@ -30,4 +30,5 @@ COPY --from=builder /usr/src/app/dist ./dist
 
 EXPOSE 8080
 
-CMD [ "node", "server.cjs" ]
+# TEMPORARY: Test if container can produce any logs
+CMD ["sh", "-c", "echo 'Hello from container'; exit 0"]
