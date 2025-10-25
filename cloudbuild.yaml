@@ -12,15 +12,16 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/team-break-tracker']
   # Deploy to Cloud Run
-  - name: 'gcr.io/google-appengine/exec-wrapper'
+  - name: 'gcr.io/cloud-builders/gcloud'
     args:
-      - '-i'
-      - 'gcr.io/$PROJECT_ID/team-break-tracker'
-      - '-s'
+      - 'run'
+      - 'deploy'
       - 'team-break-tracker'
-      - '-r'
-      - 'us-west1' # You can change this to your preferred region
+      - '--image=gcr.io/$PROJECT_ID/team-break-tracker'
+      - '--region=us-west1'
+      - '--platform=managed'
       - '--allow-unauthenticated'
+      - '--project=$PROJECT_ID'
 images:
   - 'gcr.io/$PROJECT_ID/team-break-tracker'
 options:
