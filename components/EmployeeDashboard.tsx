@@ -7,9 +7,10 @@ interface EmployeeDashboardProps {
   onRequestBreak: (userId: string) => void;
   onCancelRequest: (userId: string) => void;
   breakDuration: number;
+  onToggleTask: (userId: string, taskId: string) => void;
 }
 
-const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ currentUser, onRequestBreak, onCancelRequest, breakDuration }) => {
+const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ currentUser, onRequestBreak, onCancelRequest, breakDuration, onToggleTask }) => {
   return (
     <div className="max-w-md mx-auto">
         <h2 className="text-2xl font-semibold text-center mb-6 text-slate-900 dark:text-white">Your Status</h2>
@@ -19,6 +20,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ currentUser, onRe
           onRequest={onRequestBreak}
           onCancel={onCancelRequest}
           breakDuration={breakDuration}
+          onToggleTask={onToggleTask}
         />
     </div>
   );

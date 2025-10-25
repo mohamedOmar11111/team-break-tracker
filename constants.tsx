@@ -3,30 +3,37 @@ import { User, UserRole, BreakStatus } from './types';
 export const DEFAULT_BREAK_DURATION_MINUTES = 15;
 export const MAX_BREAKS = 3;
 
+// Helper to generate passwords
+const generatePassword = (name: string) => {
+    const firstName = name.split(' ')[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1) + '123';
+};
+
+
 export const INITIAL_USERS: User[] = [
   // Admins
-  { id: '1', name: 'ALi', username: 'ali', password: 'password', role: UserRole.Admin, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '2', name: 'Atef', username: 'atef', password: 'password', role: UserRole.Admin, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '3', name: 'Fadl', username: 'fadl', password: 'password', role: UserRole.Admin, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '4', name: 'Fathy', username: 'fathy', password: 'password', role: UserRole.Admin, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
+  { id: '1', name: 'Atef', role: UserRole.Admin, password: generatePassword('Atef'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '2', name: 'Ali', role: UserRole.Admin, password: generatePassword('Ali'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '3', name: 'Fadl', role: UserRole.Admin, password: generatePassword('Fadl'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '4', name: 'Fathy', role: UserRole.Admin, password: generatePassword('Fathy'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
   // Employees
-  { id: '5', name: 'Abdo Sayed', username: 'abdosayed', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '6', name: 'Mahmoud Waheed', username: 'mahmoudwaheed', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '7', name: 'Naira Ashraf', username: 'nairaashraf', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '8', name: 'Mo Esam', username: 'moesam', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '9', name: 'obaid', username: 'obaid', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '10', name: 'Abdelrahman Galal', username: 'abdelrahmangalal', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '11', name: 'Ahmed Amir', username: 'ahmedamir', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '12', name: 'Ahmed Gamal', username: 'ahmedgamal', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '13', name: 'Eman Gamal', username: 'emangamal', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '14', name: 'Abdallh Refaat', username: 'abdallhrefaat', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '15', name: 'Ahmed Hany', username: 'ahmedhany', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '16', name: 'Hossam Ehab', username: 'hossamehab', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '17', name: 'Shahd Nabil', username: 'shahdnabil', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '18', name: 'Nedal Elsobky', username: 'nedalsobky', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '19', name: 'Rahma Seif', username: 'rahmaseif', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '20', name: 'Hana Khaled', username: 'hanakhaled', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
-  { id: '21', name: 'Youssry', username: 'youssry', password: 'password', role: UserRole.Employee, breakStatus: BreakStatus.Available, breaksTaken: 0, breakEndTime: null },
+  { id: '5', name: 'Abdo Sayed', role: UserRole.Employee, password: generatePassword('Abdo'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '6', name: 'Mahmoud Waheed', role: UserRole.Employee, password: generatePassword('Mahmoud'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '7', name: 'Naira Ashraf', role: UserRole.Employee, password: generatePassword('Naira'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '8', name: 'Mo Esam', role: UserRole.Employee, password: generatePassword('Mo'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '9', name: 'obaid', role: UserRole.Employee, password: generatePassword('Obaid'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '10', name: 'Abdelrahman Galal', role: UserRole.Employee, password: generatePassword('Abdelrahman'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '11', name: 'Ahmed Amir', role: UserRole.Employee, password: generatePassword('Ahmed'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '12', name: 'Ahmed Gamal', role: UserRole.Employee, password: generatePassword('Ahmed'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '13', name: 'Eman Gamal', role: UserRole.Employee, password: generatePassword('Eman'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '14', name: 'Abdallh Refaat', role: UserRole.Employee, password: generatePassword('Abdallh'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '15', name: 'Ahmed Hany', role: UserRole.Employee, password: generatePassword('Ahmed'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '16', name: 'Hossam Ehab', role: UserRole.Employee, password: generatePassword('Hossam'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '17', name: 'Shahd Nabil', role: UserRole.Employee, password: generatePassword('Shahd'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '18', name: 'Nedal Elsobky', role: UserRole.Employee, password: generatePassword('Nedal'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '19', name: 'Rahma Seif', role: UserRole.Employee, password: generatePassword('Rahma'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '20', name: 'Hana Khaled', role: UserRole.Employee, password: generatePassword('Hana'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
+  { id: '21', name: 'Youssry', role: UserRole.Employee, password: generatePassword('Youssry'), breakStatus: BreakStatus.Offline, breaks: [], breakEndTime: null, tasks: [] },
 ];
 
 export const HandRaisedIcon = () => (

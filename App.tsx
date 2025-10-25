@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AdminDashboard from './components/AdminDashboard';
 import EmployeeDashboard from './components/EmployeeDashboard';
-import AdminLogin from './components/AdminLogin';
-import EmployeeLogin from './components/EmployeeLogin';
+import UserSelection from './components/UserSelection';
+import useLocalStorage from './hooks/useLocalStorage';
 import { useNotifications } from './hooks/useNotifications';
 import ToastContainer from './components/ToastContainer';
-import { User, UserRole, BreakStatus } from './types';
+import { User, UserRole, BreakStatus, Task } from './types';
 import { INITIAL_USERS, DEFAULT_BREAK_DURATION_MINUTES, MAX_BREAKS, BellIcon, BellSlashIcon } from './constants';
+import { isToday } from './utils/dateUtils';
 
 interface ToastMessage {
   id: number;
@@ -15,73 +17,93 @@ interface ToastMessage {
 }
 
 function App() {
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [breakDuration, setBreakDuration] = useState<number>(DEFAULT_BREAK_DURATION_MINUTES);
+  const [users, setUsers] = useLocalStorage<User[]>('break-tracker-users', INITIAL_USERS);
+  const [breakDuration, setBreakDuration] = useLocalStorage<number>('break-duration', DEFAULT_BREAK_DURATION_MINUTES);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const { permission, requestPermission, showNotification } = useNotifications();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const prevUsersRef = useRef<User[]>(users);
   const [newRequestIds, setNewRequestIds] = useState<Set<string>>(new Set());
-  const [route, setRoute] = useState(window.location.hash);
-  const ws = useRef<WebSocket | null>(null);
+  const [endingSoonNotified, setEndingSoonNotified] = useLocalStorage<string[]>('break-tracker-ending-soon', []);
 
-  useEffect(() => {
-    const handleHashChange = () => {
-      setRoute(window.location.hash);
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+  const notify = useCallback((payload: object) => {
+    localStorage.setItem('break-tracker-notifications', JSON.stringify({ ...payload, timestamp: Date.now() }));
   }, []);
-
-  useEffect(() => {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}`;
-    ws.current = new WebSocket(wsUrl);
-
-    ws.current.onopen = () => {
-      console.log('WebSocket connected');
-    };
-
-    ws.current.onmessage = (event) => {
-      const { type, payload } = JSON.parse(event.data);
-      if (type === 'INIT' || type === 'UPDATE') {
-        setUsers(payload.users);
-        setBreakDuration(payload.breakDuration);
-      }
-    };
-
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected');
-    };
-
-    return () => {
-      ws.current?.close();
-    };
-  }, []);
-
 
   useEffect(() => {
     const interval = setInterval(() => {
-      let changed = false;
+      let usersChanged = false;
       const now = Date.now();
+      const notifiedSet = new Set(endingSoonNotified);
+      let notifiedSetChanged = false;
+
       const updatedUsers = users.map(user => {
-        if (user.breakStatus === BreakStatus.OnBreak && user.breakEndTime && user.breakEndTime <= now) {
-          changed = true;
-          if (currentUser && currentUser.id === user.id) {
-            showNotification('Break time is over!', { body: 'Time to get back to work.' });
+        if (user.breakStatus === BreakStatus.OnBreak && user.breakEndTime) {
+          const timeLeft = user.breakEndTime - now;
+
+          // Notify if < 60s left and not already notified
+          if (timeLeft > 0 && timeLeft <= 60 * 1000 && !notifiedSet.has(user.id)) {
+            notify({
+              targetUserId: user.id,
+              title: 'Break Ending Soon',
+              body: 'Your break will end in about one minute.'
+            });
+            notifiedSet.add(user.id);
+            notifiedSetChanged = true;
           }
-          return { ...user, breakStatus: BreakStatus.Available, breakEndTime: null };
+
+          if (timeLeft <= 0) {
+            usersChanged = true;
+            notify({
+              targetUserId: user.id,
+              title: 'Break time is over!',
+              body: 'Time to get back to work.'
+            });
+            if (notifiedSet.has(user.id)) {
+                notifiedSet.delete(user.id);
+                notifiedSetChanged = true;
+            }
+            return { ...user, breakStatus: BreakStatus.Available, breakEndTime: null };
+          }
         }
         return user;
       });
-      if (changed) {
-        // This should be handled by the server, but we'll leave it for now
-        // to ensure timers are still working correctly on the client side.
+
+      if (usersChanged) {
         setUsers(updatedUsers);
       }
+
+      if (notifiedSetChanged) {
+        setEndingSoonNotified(Array.from(notifiedSet));
+      }
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [users, setUsers, currentUser, showNotification]);
+  }, [users, setUsers, notify, endingSoonNotified, setEndingSoonNotified]);
+
+  useEffect(() => {
+    const handleNotificationEvents = (e: StorageEvent) => {
+      if (e.key === 'break-tracker-notifications' && e.newValue) {
+        try {
+            const notification = JSON.parse(e.newValue);
+            if (currentUser) {
+                if (notification.targetUserId && currentUser.id === notification.targetUserId) {
+                  showNotification(notification.title, { body: notification.body });
+                }
+                if (notification.targetRole && currentUser.role === notification.targetRole) {
+                    if (notification.sourceUserId !== currentUser.id) {
+                        showNotification(notification.title, { body: notification.body });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Failed to parse notification event", error);
+        }
+      }
+    };
+    window.addEventListener('storage', handleNotificationEvents);
+    return () => window.removeEventListener('storage', handleNotificationEvents);
+  }, [currentUser, showNotification]);
 
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -95,11 +117,11 @@ function App() {
 
   useEffect(() => {
     if (currentUser?.role === UserRole.Admin) {
-      const newRequests = users.filter(user =>
-        user.breakStatus === BreakStatus.Requested &&
+      const newRequests = users.filter(user => 
+        user.breakStatus === BreakStatus.Requested && 
         !prevUsersRef.current.some(prevUser => prevUser.id === user.id && prevUser.breakStatus === BreakStatus.Requested)
       );
-
+      
       newRequests.forEach(user => {
         addToast(`${user.name} has requested a break.`, 'info');
         setNewRequestIds(prev => {
@@ -128,103 +150,162 @@ function App() {
     prevUsersRef.current = users;
   }, [users, currentUser]);
 
-  const sendMessage = (type: string, payload: any) => {
-    ws.current?.send(JSON.stringify({ type, payload }));
-  };
-
-  const handleLogin = (username, password) => {
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) {
+  const handleLogin = (username: string, password?: string) => {
+    // Trim and compare names case-insensitively for better UX
+    const user = users.find(u => u.name.toLowerCase() === username.toLowerCase().trim());
+    if (user && user.password === password) {
       setCurrentUser(user);
-      window.location.hash = '';
+      setUsers(prevUsers => prevUsers.map(u => 
+        u.id === user.id ? { ...u, breakStatus: BreakStatus.Available } : u
+      ));
+      addToast(`Welcome, ${user.name}!`, 'success');
     } else {
-      addToast('Invalid username or password', 'error');
+        addToast('Invalid credentials. Please try again.', 'error');
     }
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
+    if (currentUser) {
+       setUsers(prevUsers => prevUsers.map(u => 
+        u.id === currentUser.id ? { ...u, breakStatus: BreakStatus.Offline } : u
+      ));
+      setCurrentUser(null);
+    }
   };
-
+  
   const handleResetData = () => {
-    if(window.confirm('Are you sure you want to reset all data? This will log everyone out and reset all breaks.')) {
-      sendMessage('RESET_DATA', {});
+    if(window.confirm('Are you sure you want to reset all data? This will log everyone out and reset all breaks and tasks.')) {
+      localStorage.removeItem('break-tracker-users');
+      localStorage.removeItem('break-tracker-notifications');
+      localStorage.removeItem('break-duration');
+      localStorage.removeItem('break-tracker-ending-soon');
+      setUsers(INITIAL_USERS);
+      setBreakDuration(DEFAULT_BREAK_DURATION_MINUTES);
+      setCurrentUser(null);
     }
   }
 
   const handleRequestBreak = (userId: string) => {
-    sendMessage('REQUEST_BREAK', { userId });
-  };
+    const userRequesting = users.find(u => u.id === userId);
+    if (!userRequesting) return;
+    
+    const breaksToday = userRequesting.breaks.filter(b => isToday(b.startTime)).length;
 
+    setUsers(prevUsers => prevUsers.map(u =>
+      u.id === userId && breaksToday < MAX_BREAKS && u.breakStatus === BreakStatus.Available
+        ? { ...u, breakStatus: BreakStatus.Requested }
+        : u
+    ));
+    
+    notify({
+        targetRole: UserRole.Admin,
+        sourceUserId: userId,
+        title: 'New Break Request',
+        body: `${userRequesting.name} has requested a break.`
+    });
+  };
+  
   const handleCancelRequest = (userId: string) => {
-    sendMessage('CANCEL_REQUEST', { userId });
+    setUsers(prevUsers => prevUsers.map(u => 
+      u.id === userId && u.breakStatus === BreakStatus.Requested
+      ? { ...u, breakStatus: BreakStatus.Available }
+      : u
+    ));
   };
 
   const handleApproveBreak = (userId: string) => {
-    sendMessage('APPROVE_BREAK', { userId });
+    const userApproved = users.find(u => u.id === userId);
+    if (!userApproved) return;
+    
+    const now = Date.now();
+    const newBreak = { startTime: now, durationMinutes: breakDuration };
+
+    setUsers(prevUsers => prevUsers.map(u =>
+      u.id === userId
+        ? {
+          ...u,
+          breakStatus: BreakStatus.OnBreak,
+          breaks: [...u.breaks, newBreak],
+          breakEndTime: now + breakDuration * 60 * 1000,
+        }
+        : u
+    ));
+    
+    if (currentUser?.role === UserRole.Admin) {
+      addToast(`Approved break for ${userApproved.name}.`, 'success');
+    }
+
+    notify({
+        targetUserId: userId,
+        sourceUserId: currentUser?.id,
+        title: 'Break Approved!',
+        body: `Your break request has been approved by ${currentUser?.name}.`
+    });
   };
-
+  
   const handleDenyBreak = (userId: string) => {
-    sendMessage('DENY_BREAK', { userId });
-  }
+    const userDenied = users.find(u => u.id === userId);
+    if (!userDenied) return;
+    setUsers(prevUsers => prevUsers.map(u =>
+      u.id === userId ? { ...u, breakStatus: BreakStatus.Available } : u
+    ));
 
+    if (currentUser?.role === UserRole.Admin) {
+      addToast(`Denied break for ${userDenied.name}.`, 'info');
+    }
+
+    notify({
+        targetUserId: userId,
+        sourceUserId: currentUser?.id,
+        title: 'Break Denied',
+        body: `Your break request has been denied by ${currentUser?.name}.`
+    });
+  }
+  
   const handleBreakDurationChange = (duration: number) => {
     if (duration > 0) {
-      sendMessage('CHANGE_BREAK_DURATION', { duration });
+      setBreakDuration(duration);
     }
   }
 
-  const loggedInUser = currentUser ? users.find(u => u.id === currentUser.id) : null;
+  const handleAddTask = (userId: string, taskText: string, dueDate: string | null) => {
+    if (!taskText.trim()) return;
 
-  const renderContent = () => {
-    if (loggedInUser) {
-      if (loggedInUser.role === UserRole.Admin) {
-        return (
-          <AdminDashboard
-            users={users}
-            onApproveBreak={handleApproveBreak}
-            onDenyBreak={handleDenyBreak}
-            newRequestIds={Array.from(newRequestIds)}
-            breakDuration={breakDuration}
-            onBreakDurationChange={handleBreakDurationChange}
-          />
-        );
-      } else {
-        return (
-          <EmployeeDashboard
-            currentUser={loggedInUser}
-            onRequestBreak={handleRequestBreak}
-            onCancelRequest={handleCancelRequest}
-            breakDuration={breakDuration}
-          />
-        );
-      }
-    }
+    const newTask: Task = {
+      id: Date.now().toString(),
+      text: taskText,
+      completed: false,
+      dueDate: dueDate,
+      completionDate: null,
+    };
 
-    if (route === '#admin-login') {
-      return <AdminLogin onLogin={handleLogin} />;
-    }
-
-    if (route === '#employee-login') {
-      return <EmployeeLogin onLogin={handleLogin} />;
-    }
-
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-8">Welcome to Team Break Tracker</h1>
-          <div className="space-x-4">
-            <a href="#admin-login" className="px-6 py-3 text-lg font-semibold text-white bg-indigo-600 rounded-md shadow-sm hover:bg-indigo-500">
-              Admin Login
-            </a>
-            <a href="#employee-login" className="px-6 py-3 text-lg font-semibold text-white bg-green-600 rounded-md shadow-sm hover:bg-green-500">
-              Employee Login
-            </a>
-          </div>
-        </div>
-      </div>
+    setUsers(prevUsers =>
+      prevUsers.map(user =>
+        user.id === userId ? { ...user, tasks: [...user.tasks, newTask] } : user
+      )
     );
   };
+
+  const handleToggleTask = (userId: string, taskId: string) => {
+    setUsers(prevUsers =>
+      prevUsers.map(user =>
+        user.id === userId
+          ? {
+              ...user,
+              tasks: user.tasks.map(task => {
+                if (task.id === taskId) {
+                  const isCompleted = !task.completed;
+                  return { ...task, completed: isCompleted, completionDate: isCompleted ? Date.now() : null };
+                }
+                return task;
+              }),
+            }
+          : user
+      )
+    );
+  };
+
+  const loggedInUser = currentUser ? users.find(u => u.id === currentUser.id) : null;
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans">
@@ -232,7 +313,7 @@ function App() {
       <header className="bg-white dark:bg-slate-800 shadow-md">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Team Break Tracker</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Team Dashboard</h1>
             <div className="flex items-center space-x-4">
                {loggedInUser && (
                 <>
@@ -264,7 +345,27 @@ function App() {
       </header>
 
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-        {renderContent()}
+        {!loggedInUser ? (
+          <UserSelection onLogin={handleLogin} />
+        ) : loggedInUser.role === UserRole.Admin ? (
+          <AdminDashboard
+            users={users}
+            onApproveBreak={handleApproveBreak}
+            onDenyBreak={handleDenyBreak}
+            newRequestIds={Array.from(newRequestIds)}
+            breakDuration={breakDuration}
+            onBreakDurationChange={handleBreakDurationChange}
+            onAddTask={handleAddTask}
+          />
+        ) : (
+          <EmployeeDashboard
+            currentUser={loggedInUser}
+            onRequestBreak={handleRequestBreak}
+            onCancelRequest={handleCancelRequest}
+            breakDuration={breakDuration}
+            onToggleTask={handleToggleTask}
+          />
+        )}
       </main>
     </div>
   );

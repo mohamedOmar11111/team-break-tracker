@@ -1,31 +1,63 @@
 
-import React from 'react';
-import { User } from '../types';
+import React, { useState } from 'react';
 
 interface UserSelectionProps {
-  users: User[];
-  onLogin: (userId: string) => void;
+  onLogin: (username: string, password: string) => void;
 }
 
-const UserSelection: React.FC<UserSelectionProps> = ({ users, onLogin }) => {
+const UserSelection: React.FC<UserSelectionProps> = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username.trim() && password) {
+      onLogin(username.trim(), password);
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-8 rounded-lg shadow-lg">
-      <h2 className="text-3xl font-bold text-center text-slate-900 dark:text-white mb-8">Who are you?</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {users.map((user) => (
+    <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-lg shadow-lg">
+      <h2 className="text-3xl font-bold text-center text-slate-900 dark:text-white mb-8">Login</h2>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="username" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Full Name
+          </label>
+          <input
+            type="text"
+            id="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            autoComplete="username"
+            placeholder="Enter your full name"
+            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Password
+          </label>
+          <input
+            type="password"
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          />
+        </div>
+        <div>
           <button
-            key={user.id}
-            onClick={() => onLogin(user.id)}
-            className="flex flex-col items-center p-4 bg-slate-50 dark:bg-slate-700 rounded-lg shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            type="submit"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            <div className="w-16 h-16 rounded-full bg-indigo-200 dark:bg-indigo-500 flex items-center justify-center mb-3">
-              <span className="text-2xl font-bold text-indigo-700 dark:text-white">{user.name.charAt(0)}</span>
-            </div>
-            <span className="text-center font-semibold text-sm">{user.name}</span>
-            <span className="text-center text-xs text-slate-500 dark:text-slate-400">{user.role}</span>
+            Login
           </button>
-        ))}
-      </div>
+        </div>
+      </form>
     </div>
   );
 };
